@@ -40,14 +40,10 @@ Effects & frame generation
 - Effect functions are responsible only for writing into the source buffer (generate stage). After generation, the pipeline runs modulation (if enabled) and then transmit.
 - This separation (generate → modulate → transmit) makes it straightforward to add new effects without changing the transmit logic.
 
-Architectural recommendations
-- Double-buffering or a ring/frame queue: allow generating the next frame while the current frame is being transmitted to improve throughput and avoid dead time.
-- Use a state machine in the main loop to handle stages: IDLE → GENERATE → MODULATE → TRANSMIT → WAIT_FOR_COMPLETE → IDLE.
-- Add diagnostic logging (UART) to trace state transitions: frame created, DMA started, DMA finished.
-
 Debugging tips
 - Monitor the transfer-complete flag to ensure the callback executes.
 - Verify timer period and PWM duty mapping against the expected protocol timing.
 - Confirm buffer sizes and watch for overruns when increasing frame length.
+
 
 
