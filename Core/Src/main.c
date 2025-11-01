@@ -45,6 +45,8 @@
 TIM_HandleTypeDef htim1;
 DMA_HandleTypeDef hdma_tim1_ch1;
 
+UART_HandleTypeDef huart2;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -54,6 +56,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -68,6 +71,8 @@ static void MX_TIM1_Init(void);
 
 uint8_t LED_Data[MAX_LED][4];
 uint8_t LED_Mod[MAX_LED][4];
+volatile uint8_t rx_byte;
+volatile uint8_t uart_rx_flag = 0;
 
 
 int datasendflag = 0; 
@@ -109,6 +114,11 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
   HAL_TIM_PWM_Stop_DMA(&htim1, TIM_CHANNEL_1);
   datasendflag = 1;
 }
+
+
+
+
+
 
 // uint16_t pwmData[24];
 
@@ -237,6 +247,17 @@ void simple_rainbow() {
   hue += 2;  // Kecepatan animasi
 }
 
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART2) {
+        uart_rx_flag = 1;                     // beri tanda untuk diproses di main
+        // echo kembali ke PC (non-blocking) supaya terlihat di terminal
+        // HAL_UART_Transmit_IT(huart, &rx_byte, 1);
+        // rearm receive segera
+        HAL_UART_Receive_IT(huart, (uint8_t *)&rx_byte, 1);
+    }
+}
+
 
 /* USER CODE END 0 */
 
@@ -271,6 +292,8 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_TIM1_Init();
+  MX_USART2_UART_Init();
+  HAL_UART_Receive_IT(&huart2, (uint8_t *)&rx_byte, 1);
   /* USER CODE BEGIN 2 */
   
   // for (int i = 0; i < 24; i++) {
@@ -279,7 +302,6 @@ int main(void)
   // Set_Brightness(100);  // Full brightness
   // WS2812_Send();
 
-  int toggle = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -287,26 +309,25 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+    if (uart_rx_flag) {
+      uart_rx_flag = 0; // clear flag
 
-    /* USER CODE BEGIN 3 */
-    // Semua LED Merah
-    for (int i = 0; i < MAX_LED; i++) {
-        Set_LED(i, 255, 0, 0);  // Merah
-    }
-    Set_Brightness(45);
-    WS2812_Send();
-    HAL_Delay(1000);  // 1 detik
-    
-    // Semua LED Hijau
-    for (int i = 0; i < MAX_LED; i++) {
-        Set_LED(i, 0, 255, 0);  // Hijau
-    }
-    Set_Brightness(45);
-    WS2812_Send();
-    HAL_Delay(1000);  // 1 detik
-    /* USER CODE END 3 */
+      if (rx_byte == 'a') {
+          HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+          for (int i = 0; i < MAX_LED; i++) Set_LED(i, 255, 0, 0);
+          Set_Brightness(45);
+          WS2812_Send(); // dipanggil di context normal, bukan ISR
+      } else if (rx_byte == 'b') {
+          HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+          for (int i = 0; i < MAX_LED; i++) Set_LED(i, 0, 255, 0);
+          Set_Brightness(45);
+          WS2812_Send();
+      }
+  /* USER CODE END 3 */
   }
 }
+}
+
 /**
   * @brief System Clock Configuration
   * @retval None
@@ -425,6 +446,39 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 2 */
   HAL_TIM_MspPostInit(&htim1);
+
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
 
 }
 
