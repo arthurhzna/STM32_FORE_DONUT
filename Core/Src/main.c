@@ -68,14 +68,16 @@ static void MX_USART2_UART_Init(void);
 
 #define MAX_LED 24
 #define USE_BRIGHTNESS 1
+#define PI 3.14159265
 
 uint8_t LED_Data[MAX_LED][4];
 uint8_t LED_Mod[MAX_LED][4];
+uint16_t pwmData[(24*MAX_LED)+50];
+uint16_t effStep = 0;
+int datasendflag = 0; 
+
 volatile uint8_t rx_byte;
 volatile uint8_t uart_rx_flag = 0;
-
-
-int datasendflag = 0; 
 
 void Set_LED (int LEDnum, int Red, int Green, int Blue)
 {
@@ -84,9 +86,6 @@ void Set_LED (int LEDnum, int Red, int Green, int Blue)
 	LED_Data[LEDnum][2] = Red;
 	LED_Data[LEDnum][3] = Blue;
 }
-
-#define PI 3.14159265
-
 void Set_Brightness (int brightness)  // 0-45
 {
 #if USE_BRIGHTNESS
@@ -106,19 +105,12 @@ void Set_Brightness (int brightness)  // 0-45
 #endif
 }
 
-
-
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
   HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13); // LED built-in toggle
   HAL_TIM_PWM_Stop_DMA(&htim1, TIM_CHANNEL_1);
   datasendflag = 1;
 }
-
-
-
-
-
 
 // uint16_t pwmData[24];
 
@@ -143,16 +135,11 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 //   HAL_TIM_PWM_Start_DMA(&htim1, TIM_CHANNEL_1, pwmData, 24);
 // }
 
-uint16_t pwmData[(24*MAX_LED)+50];
-
 void WS2812_Send (void)
 {
 	uint32_t indx=0;
 	uint32_t color;
-
-  
-
-
+	
 	for (int i= 0; i<MAX_LED; i++)  // loop through each LED
 	{
 #if USE_BRIGHTNESS
@@ -167,12 +154,9 @@ void WS2812_Send (void)
 			{
 				pwmData[indx] = 60;  // 2/3 of 90
 			}
-
 			else pwmData[indx] = 30;  // 1/3 of 90
-
 			indx++;
 		}
-
 	}
 
 	for (int i=0; i<50; i++)  
@@ -186,67 +170,6 @@ void WS2812_Send (void)
   datasendflag = 0;
 }
 
-uint16_t effStep = 0;
-
-uint8_t rainbow_effect_right() {
-  float factor1, factor2;
-  uint16_t ind;
-
-  for (uint16_t j = 0; j < MAX_LED; j++) {
-    ind = 14 - (int16_t)(effStep - j * 1.75) % 14;
-    switch ((int)((ind % 14) / 4.666666666666667)) {
-      case 0:
-        factor1 = 1.0 - ((float)(ind % 14 - 0 * 4.666666666666667) / 4.666666666666667);
-        factor2 = (float)((int)(ind - 0) % 14) / 4.666666666666667;
-        Set_LED(j, (int)(255 * factor1 + 0 * factor2), (int)(0 * factor1 + 255 * factor2), 0);
-        break;
-      case 1:
-        factor1 = 1.0 - ((float)(ind % 14 - 1 * 4.666666666666667) / 4.666666666666667);
-        factor2 = (float)((int)(ind - 4.666666666666667) % 14) / 4.666666666666667;
-        Set_LED(j, 0, (int)(255 * factor1 + 0 * factor2), (int)(0 * factor1 + 255 * factor2));
-        break;
-      case 2:
-        factor1 = 1.0 - ((float)(ind % 14 - 2 * 4.666666666666667) / 4.666666666666667);
-        factor2 = (float)((int)(ind - 9.333333333333334) % 14) / 4.666666666666667;
-        Set_LED(j, (int)(0 * factor1 + 255 * factor2), 0, (int)(255 * factor1 + 0 * factor2));
-        break;
-    }
-  }
-
-#if USE_BRIGHTNESS
-  Set_Brightness(45); // isi LED_Mod berdasarkan LED_Data
-#endif
-  WS2812_Send(); // kirim sekali untuk seluruh strip
-
-  if (effStep >= 14) { effStep = 0; return 0x03; }
-  else effStep++;
-  return 0x01;
-}
-
-
-void simple_rainbow() {
-  static uint8_t hue = 0;
-  
-  for (int i = 0; i < MAX_LED; i++) {
-      uint8_t led_hue = (hue + (i * 10)) % 255;
-      
-      if (led_hue < 85) {
-          Set_LED(i, 255 - led_hue * 3, led_hue * 3, 0);
-      } else if (led_hue < 170) {
-          led_hue -= 85;
-          Set_LED(i, 0, 255 - led_hue * 3, led_hue * 3);
-      } else {
-          led_hue -= 170;
-          Set_LED(i, led_hue * 3, 0, 255 - led_hue * 3);
-      }
-  }
-  
-  Set_Brightness(45);
-  WS2812_Send();
-  
-  hue += 2;  // Kecepatan animasi
-}
-
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == USART2) {
@@ -257,7 +180,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         HAL_UART_Receive_IT(huart, (uint8_t *)&rx_byte, 1);
     }
 }
-
 
 /* USER CODE END 0 */
 
@@ -313,12 +235,10 @@ int main(void)
       uart_rx_flag = 0; // clear flag
 
       if (rx_byte == 'a') {
-          HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
           for (int i = 0; i < MAX_LED; i++) Set_LED(i, 255, 0, 0);
           Set_Brightness(45);
           WS2812_Send(); // dipanggil di context normal, bukan ISR
       } else if (rx_byte == 'b') {
-          HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
           for (int i = 0; i < MAX_LED; i++) Set_LED(i, 0, 255, 0);
           Set_Brightness(45);
           WS2812_Send();
@@ -563,3 +483,4 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
