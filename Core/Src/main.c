@@ -107,7 +107,7 @@ void Set_Brightness (int brightness)  // 0-45
 
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
-  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13); // LED built-in toggle
+  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13); 
   HAL_TIM_PWM_Stop_DMA(&htim1, TIM_CHANNEL_1);
   datasendflag = 1;
 }
@@ -140,15 +140,15 @@ void WS2812_Send (void)
 	uint32_t indx=0;
 	uint32_t color;
 	
-	for (int i= 0; i<MAX_LED; i++)  // loop through each LED
+	for (int i= 0; i<MAX_LED; i++)  
 	{
 #if USE_BRIGHTNESS
-		color = ((LED_Mod[i][1]<<16) | (LED_Mod[i][2]<<8) | (LED_Mod[i][3])); // get the color of the LED
+		color = ((LED_Mod[i][1]<<16) | (LED_Mod[i][2]<<8) | (LED_Mod[i][3])); 
 #else
-		color = ((LED_Data[i][1]<<16) | (LED_Data[i][2]<<8) | (LED_Data[i][3])); // get the color of the LED
+		color = ((LED_Data[i][1]<<16) | (LED_Data[i][2]<<8) | (LED_Data[i][3])); 
 #endif
 
-		for (int i=23; i>=0; i--) // loop through each bit
+		for (int i=23; i>=0; i--) 
 		{
 			if (color&(1<<i))
 			{
@@ -173,10 +173,8 @@ void WS2812_Send (void)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == USART2) {
-        uart_rx_flag = 1;                     // beri tanda untuk diproses di main
-        // echo kembali ke PC (non-blocking) supaya terlihat di terminal
+        uart_rx_flag = 1;                  
         // HAL_UART_Transmit_IT(huart, &rx_byte, 1);
-        // rearm receive segera
         HAL_UART_Receive_IT(huart, (uint8_t *)&rx_byte, 1);
     }
 }
@@ -232,12 +230,12 @@ int main(void)
   {
     /* USER CODE END WHILE */
     if (uart_rx_flag) {
-      uart_rx_flag = 0; // clear flag
+      uart_rx_flag = 0;
 
       if (rx_byte == 'a') {
           for (int i = 0; i < MAX_LED; i++) Set_LED(i, 255, 0, 0);
           Set_Brightness(45);
-          WS2812_Send(); // dipanggil di context normal, bukan ISR
+          WS2812_Send(); 
       } else if (rx_byte == 'b') {
           for (int i = 0; i < MAX_LED; i++) Set_LED(i, 0, 255, 0);
           Set_Brightness(45);
@@ -483,4 +481,5 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
 
