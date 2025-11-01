@@ -1,4 +1,4 @@
-# STM32_WS2812B
+# STM32 FORE DONUT
 
 This document describes the firmware data pipeline: the flow from input commands through frame generation, brightness modulation, PWM buffer construction, DMA transfer, and synchronization via callbacks. Variable names used in the code are intentionally not referenced here; descriptions use conceptual names (e.g., source buffer, modulated buffer).
 
@@ -49,4 +49,5 @@ Debugging tips
 - Monitor the transfer-complete flag to ensure the callback executes.
 - Verify timer period and PWM duty mapping against the expected protocol timing.
 - Confirm buffer sizes and watch for overruns when increasing frame length.
+
 
