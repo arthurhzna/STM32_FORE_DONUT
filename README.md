@@ -36,14 +36,11 @@ Triggering & control flow
 - External commands (e.g., via UART) set a receive flag. The main loop processes commands in non-ISR context and triggers frame generation + transmit.
 - Heavy computation (generation/modulation) should be done in the main context, not inside interrupts, to keep ISRs short and deterministic.
 
-Effects & frame generation
-- Effect functions are responsible only for writing into the source buffer (generate stage). After generation, the pipeline runs modulation (if enabled) and then transmit.
-- This separation (generate → modulate → transmit) makes it straightforward to add new effects without changing the transmit logic.
-
 Debugging tips
 - Monitor the transfer-complete flag to ensure the callback executes.
 - Verify timer period and PWM duty mapping against the expected protocol timing.
 - Confirm buffer sizes and watch for overruns when increasing frame length.
+
 
 
 
